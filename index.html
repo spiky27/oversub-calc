@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Oversubscription Calculator</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f5f5f7;
+    --card: #ffffff;
+    --border: #d8d8dc;
+    --text: #1d1d1f;
+    --muted: #6e6e73;
+    --accent: #0071e3;
+    --derived: #eef6ff;
+    --conflict: #ffe6e6;
+    --conflict-text: #c62828;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1e;
+      --card: #2c2c2e;
+      --border: #3a3a3c;
+      --text: #f5f5f7;
+      --muted: #a1a1a6;
+      --derived: #123a5e;
+      --conflict: #4a1f1f;
+      --conflict-text: #ff6b6b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    padding: 32px 16px;
+  }
+  .app {
+    width: 100%;
+    max-width: 640px;
+  }
+  h1 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0 0 4px;
+  }
+  .subtitle {
+    color: var(--muted);
+    font-size: 13px;
+    margin: 0 0 24px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .card h2 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    margin: 0 0 14px;
+  }
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .row:last-child { margin-bottom: 0; }
+  .row label {
+    flex: 0 0 150px;
+    font-size: 14px;
+  }
+  .row .field {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  input[type="number"] {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+  }
+  input[type="number"].derived {
+    background: var(--derived);
+    border-color: var(--accent);
+  }
+  input[type="number"].conflict {
+    background: var(--conflict);
+    border-color: var(--conflict-text);
+    color: var(--conflict-text);
+  }
+  .unit {
+    font-size: 13px;
+    color: var(--muted);
+    flex: 0 0 auto;
+    width: 42px;
+  }
+  .badge {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 6px;
+    flex: 0 0 auto;
+    text-align: center;
+    width: 52px;
+  }
+  .badge.entered { color: var(--accent); border: 1px solid var(--accent); }
+  .badge.derived-badge { color: var(--muted); border: 1px solid var(--border); }
+  .badge.empty { visibility: hidden; }
+  .ratio-display {
+    font-size: 28px;
+    font-weight: 600;
+    text-align: center;
+    padding: 8px 0 4px;
+  }
+  .ratio-display span { color: var(--muted); font-size: 15px; font-weight: 400; }
+  .warning {
+    font-size: 12.5px;
+    color: var(--conflict-text);
+    margin-top: 8px;
+  }
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+  button {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  .hint {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>Oversubscription Calculator</h1>
+  <p class="subtitle">Fill in whatever you know — the rest is derived automatically.</p>
+
+  <div class="card">
+    <h2>Downlinks (server / access-facing ports)</h2>
+    <div class="row">
+      <label for="Ds">Speed per port</label>
+      <div class="field">
+        <input type="number" id="Ds" min="0" step="any" list="speeds">
+        <span class="unit">Gbps</span>
+        <span class="badge empty" id="Ds-badge"></span>
+      </div>
+    </div>
+    <div class="row">
+      <label for="Dc">Number of downlinks</label>
+      <div class="field">
+        <input type="number" id="Dc" min="0" step="1">
+        <span class="unit"></span>
+        <span class="badge empty" id="Dc-badge"></span>
+      </div>
+    </div>
+    <div class="row">
+      <label>Downlink bandwidth</label>
+      <div class="field">
+        <input type="number" id="DB" disabled class="derived">
+        <span class="unit">Gbps</span>
+        <span class="badge empty"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Uplinks (fabric / uplink-facing ports)</h2>
+    <div class="row">
+      <label for="Us">Speed per port</label>
+      <div class="field">
+        <input type="number" id="Us" min="0" step="any" list="speeds">
+        <span class="unit">Gbps</span>
+        <span class="badge empty" id="Us-badge"></span>
+      </div>
+    </div>
+    <div class="row">
+      <label for="Uc">Number of uplinks</label>
+      <div class="field">
+        <input type="number" id="Uc" min="0" step="1">
+        <span class="unit"></span>
+        <span class="badge empty" id="Uc-badge"></span>
+      </div>
+    </div>
+    <div class="row">
+      <label>Uplink bandwidth</label>
+      <div class="field">
+        <input type="number" id="UB" disabled class="derived">
+        <span class="unit">Gbps</span>
+        <span class="badge empty"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Switch &amp; ratio</h2>
+    <div class="row">
+      <label for="Tp">Total ports available</label>
+      <div class="field">
+        <input type="number" id="Tp" min="0" step="1">
+        <span class="unit"></span>
+        <span class="badge empty" id="Tp-badge"></span>
+      </div>
+    </div>
+    <div class="row">
+      <label for="R">Oversubscription ratio</label>
+      <div class="field">
+        <input type="number" id="R" min="0" step="any">
+        <span class="unit">:1</span>
+        <span class="badge empty" id="R-badge"></span>
+      </div>
+    </div>
+    <div class="ratio-display" id="ratio-display">—</div>
+    <div class="warning" id="conflict-msg"></div>
+  </div>
+
+  <datalist id="speeds">
+    <option value="1"></option>
+    <option value="10"></option>
+    <option value="25"></option>
+    <option value="40"></option>
+    <option value="100"></option>
+    <option value="200"></option>
+    <option value="400"></option>
+    <option value="800"></option>
+  </datalist>
+
+  <div class="actions">
+    <button id="clear-btn">Clear all</button>
+  </div>
+  <p class="hint">Assumes every port on the switch is either a downlink or an uplink (Total ports = downlinks + uplinks).</p>
+</div>
+
+<script type="module">
+import { solveState, editable, derivedOnly, allVars } from './src/solver.js';
+
+(function () {
+  // value[k] = number or null. locked[k] = true if user typed it directly.
+  let value = {};
+  let locked = {};
+  allVars.forEach(k => { value[k] = null; locked[k] = false; });
+
+  function solve() {
+    const result = solveState(value, locked);
+    value = result.value;
+    render(result.conflicts);
+  }
+
+  function render(conflicts) {
+    allVars.forEach(k => {
+      const el = document.getElementById(k);
+      if (!el) return;
+      const v = value[k];
+      el.value = (v === null || Number.isNaN(v)) ? '' : (Math.round(v * 1e6) / 1e6);
+      const badge = document.getElementById(k + '-badge');
+      if (editable.includes(k)) {
+        el.classList.remove('derived');
+        if (locked[k]) {
+          badge.className = 'badge entered';
+          badge.textContent = 'entered';
+        } else if (v !== null) {
+          badge.className = 'badge derived-badge';
+          badge.textContent = 'derived';
+        } else {
+          badge.className = 'badge empty';
+          badge.textContent = '';
+        }
+      } else {
+        el.classList.add('derived');
+      }
+    });
+
+    const dispEl = document.getElementById('ratio-display');
+    if (value.R !== null) {
+      dispEl.innerHTML = (Math.round(value.R * 100) / 100) + ' <span>: 1</span>';
+    } else {
+      dispEl.textContent = '—';
+    }
+
+    const msg = document.getElementById('conflict-msg');
+    if (conflicts.length) {
+      msg.textContent = '⚠ ' + conflicts.join(' ');
+      editable.concat(derivedOnly).forEach(k => document.getElementById(k)?.classList.add('conflict'));
+    } else {
+      msg.textContent = '';
+      allVars.forEach(k => document.getElementById(k)?.classList.remove('conflict'));
+    }
+  }
+
+  editable.forEach(k => {
+    document.getElementById(k).addEventListener('input', (e) => {
+      const raw = e.target.value;
+      if (raw === '') {
+        locked[k] = false;
+        value[k] = null;
+      } else {
+        locked[k] = true;
+        value[k] = parseFloat(raw);
+      }
+      solve();
+    });
+  });
+
+  document.getElementById('clear-btn').addEventListener('click', () => {
+    allVars.forEach(k => { value[k] = null; locked[k] = false; });
+    solve();
+  });
+
+  solve();
+})();
+</script>
+</body>
+</html>
