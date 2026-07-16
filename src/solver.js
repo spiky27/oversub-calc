@@ -93,3 +93,19 @@ export function solveState(value, locked) {
 
   return { value: next, conflicts };
 }
+
+// Given total ports N, a target oversub ratio R, and the two port speeds,
+// picks integer uplink/downlink counts that split N without ever exceeding
+// R (a higher actual ratio is worse). Uc is rounded UP from the continuous
+// ideal (N / (1+rho)) so the actual ratio never overshoots the target; this
+// trades a slightly lower Dc than the continuous ideal for never degrading
+// the ratio. Every port is used (Dc + Uc = N always).
+export function optimizeCounts({ N, R, Us, Ds }) {
+  if (!(N > 0) || !(Us > 0) || !(Ds > 0) || !(R >= 0)) return null;
+  const rho = (R * Us) / Ds;
+  const rawUc = N / (1 + rho);
+  const Uc = Math.min(Math.max(Math.ceil(rawUc), 1), N);
+  const Dc = N - Uc;
+  const actualR = Dc === 0 ? 0 : (Dc * Ds) / (Uc * Us);
+  return { Uc, Dc, actualR };
+}

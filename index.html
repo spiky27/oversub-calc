@@ -250,10 +250,65 @@
     <button id="clear-btn">Clear all</button>
   </div>
   <p class="hint">Assumes every port on the switch is either a downlink or an uplink (Total ports = downlinks + uplinks).</p>
+
+  <h1 style="margin-top: 40px;">Optimal Port Allocator</h1>
+  <p class="subtitle">Given a total port count and a target oversub ratio, picks the integer uplink/downlink split that maximizes downlinks without ever exceeding the target ratio.</p>
+
+  <div class="card">
+    <h2>Inputs</h2>
+    <div class="row">
+      <label for="opt-N">Total ports (N)</label>
+      <div class="field">
+        <input type="number" id="opt-N" min="1" step="1">
+        <span class="unit"></span>
+      </div>
+    </div>
+    <div class="row">
+      <label for="opt-R">Target oversub ratio</label>
+      <div class="field">
+        <input type="number" id="opt-R" min="0" step="any">
+        <span class="unit">:1</span>
+      </div>
+    </div>
+    <div class="row">
+      <label for="opt-Us">Uplink speed</label>
+      <div class="field">
+        <input type="number" id="opt-Us" min="0" step="any" list="speeds">
+        <span class="unit">Gbps</span>
+      </div>
+    </div>
+    <div class="row">
+      <label for="opt-Ds">Downlink speed</label>
+      <div class="field">
+        <input type="number" id="opt-Ds" min="0" step="any" list="speeds">
+        <span class="unit">Gbps</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Result</h2>
+    <div class="row">
+      <label>Uplinks</label>
+      <div class="field">
+        <input type="number" id="opt-Uc" disabled class="derived">
+        <span class="unit"></span>
+      </div>
+    </div>
+    <div class="row">
+      <label>Downlinks</label>
+      <div class="field">
+        <input type="number" id="opt-Dc" disabled class="derived">
+        <span class="unit"></span>
+      </div>
+    </div>
+    <div class="ratio-display" id="opt-ratio-display">—</div>
+    <div class="warning" id="opt-msg"></div>
+  </div>
 </div>
 
 <script type="module">
-import { solveState, editable, derivedOnly, allVars } from './src/solver.js';
+import { solveState, editable, derivedOnly, allVars, optimizeCounts } from './src/solver.js';
 
 (function () {
   // value[k] = number or null. locked[k] = true if user typed it directly.
@@ -328,6 +383,39 @@ import { solveState, editable, derivedOnly, allVars } from './src/solver.js';
   });
 
   solve();
+})();
+
+(function () {
+  const ids = ['opt-N', 'opt-R', 'opt-Us', 'opt-Ds'];
+  const dispEl = document.getElementById('opt-ratio-display');
+  const msg = document.getElementById('opt-msg');
+
+  function solveOptimal() {
+    const N = parseFloat(document.getElementById('opt-N').value);
+    const R = parseFloat(document.getElementById('opt-R').value);
+    const Us = parseFloat(document.getElementById('opt-Us').value);
+    const Ds = parseFloat(document.getElementById('opt-Ds').value);
+
+    const hasAllInputs = [N, R, Us, Ds].every((v) => !Number.isNaN(v));
+    const result = hasAllInputs ? optimizeCounts({ N, R, Us, Ds }) : null;
+
+    document.getElementById('opt-Uc').value = result ? result.Uc : '';
+    document.getElementById('opt-Dc').value = result ? result.Dc : '';
+
+    if (result) {
+      dispEl.innerHTML = (Math.round(result.actualR * 100) / 100) + ' <span>: 1 actual</span>';
+      msg.textContent = '';
+    } else {
+      dispEl.textContent = '—';
+      msg.textContent = hasAllInputs ? '⚠ Enter positive N/Us/Ds and a non-negative ratio.' : '';
+    }
+  }
+
+  ids.forEach((id) => {
+    document.getElementById(id).addEventListener('input', solveOptimal);
+  });
+
+  solveOptimal();
 })();
 </script>
 </body>
