@@ -23,3 +23,9 @@
   uplinks). Changing them changes what the calculator claims is true —
   treat as a domain decision, not a refactor, and update `docs/SKILL.md` and
   `src/solver.test.js` alongside any change.
+- `python/solver.py` is a hand-maintained port of `src/solver.js` — there is
+  no codegen or shared source of truth between them (see
+  `docs/adr/0003-python-tkinter-desktop-version.md`). Any change to
+  `solveState`/`optimizeCounts`'s rules or behavior must be mirrored in
+  `solve_state`/`optimize_counts`, with matching updates to
+  `python/test_solver.py`, or the two implementations will silently disagree.
